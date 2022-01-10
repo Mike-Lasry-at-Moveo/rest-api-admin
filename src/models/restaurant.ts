@@ -1,32 +1,38 @@
 import mongoose from "mongoose";
+import { Errors, Options } from "../config/constants";
 
 interface IRestaurant {
-    _id?: String,
-    name: String,
-    dishes: [String],
-    open: Number,
-    address: String 
+    _id?: string,
+    name: string,
+    description: string,
+    imgUrl: string,
+    open: number,
+    address: string
 };
 
 interface IRestaurantDocument extends mongoose.Document {
-    name: String,
-    dishes: [String],
-    open: Number,
-    address: String 
+    name: string,
+    description: string,
+    imgUrl: string,
+    open: number,
+    address: string
 };
 
 interface IRestaurantModel extends mongoose.Model<IRestaurantDocument> {
     build(attr: IRestaurant): IRestaurant;
     findAll(): Promise<IRestaurantDocument[]>;
+    search(contains: string): Promise<IRestaurantDocument[]>;
     add(restaurant: IRestaurant): Promise<IRestaurantDocument>;
-    change(restaurantId: String, key: String, value: String): Promise<any>;
-    delete(restaurantId: String): Promise<any>;
+    change(restaurantId: string, key: string, value: string): Promise<any>;
+    delete(restaurantId: string): Promise<any>;
+    getById(restaurantId: string): Promise<any>;
 };
 
 const restaurantSchema = new mongoose.Schema({
     name: { type: String },
-    dishes: {type: [String]},
-    open: {type: Number},
+    description: {type: String},
+    imgUrl: {type: String},
+    open: { type: Number, default: 128 },
     address: { type: String }
 });
 
@@ -34,52 +40,97 @@ restaurantSchema.statics.build = (attr: IRestaurant): IRestaurant => {
     return new Restaurant(attr);
 };
 
-restaurantSchema.statics.findAll = async (): Promise<IRestaurantDocument[]>=> {
-    let response: IRestaurantDocument[] = [];
+restaurantSchema.statics.search = async (contains: any): Promise<IRestaurantDocument[]> => {
+    let response = [] as IRestaurantDocument[];
     try {
-        response = await Restaurant.find();
+        response = await Restaurant.find({
+            // name: {"$regex": contains, "$options":"i"}
+            $or: [ 
+                { ...getFilterByKey(Options.NAME,contains) },
+                { ...getFilterByKey(Options.ADDR,contains) },
+                { ...getFilterByKey(Options.DESC,contains) },
+             ]
+        })
     } catch (error) {
-        console.error.bind("error");
-    } return response;
+        console.error.bind(Errors.BIND_ERR);
+    } finally {
+        return response;
+    }
+};
+
+restaurantSchema.statics.findAll = async (): Promise<IRestaurantDocument[]> => {
+    let response = [] as IRestaurantDocument[];
+    try {
+        response = await Restaurant.find({});
+    } catch (error) {
+        console.error.bind(Errors.BIND_ERR);
+    } finally {
+        return response;
+    }
+};
+
+restaurantSchema.statics.getById = async (id: string): Promise<any> => {
+    let response = {} as any;
+    try {
+        response = await Restaurant.findById(id)
+    } catch (error) {
+        console.error.bind(Errors.BIND_ERR);
+    } finally { return response; }
 };
 
 restaurantSchema.statics.add = async (restaurant: IRestaurantDocument): Promise<IRestaurantDocument> => {
-    let response: IRestaurantDocument | null;
-     try{
-         response = await Restaurant.create(restaurant);
-     } catch (error) {
-         console.error.bind(`Error occured trying to add a new restaurant:\n${restaurant}`); 
-         response = {} as IRestaurantDocument;        
-     } return response;
+    let response = {} as IRestaurantDocument;
+    try {
+        response = await Restaurant.create(restaurant);
+    } catch (error) {
+        console.error.bind(`${Errors.REST_CREATE}:\n${restaurant}`);
+    } finally{
+        return response;
+    }
 };
 
-restaurantSchema.statics.change = async (restaurantId: string, key: String, value: String): Promise<any> => {
+restaurantSchema.statics.change = async (restaurantId: string, key: string, value: string): Promise<any> => {
     let response = null;
     try {
-        response = await Restaurant.updateOne( {_id: restaurantId}, {$set: {...getUpdate(key, value)}} );
+        response = await Restaurant.updateOne({ _id: restaurantId }, { $set: { ...getUpdate(key, value) } });
     } catch (error) {
-        console.error.bind(`Error occured trying to change a restaurant: ${restaurantId}`);
+        console.error.bind(`${Errors.REST_UPDT}: ${restaurantId}`);
     } finally { return response };
 };
 
-restaurantSchema.statics.delete = async (restaurantId: String): Promise<any> => {
+restaurantSchema.statics.delete = async (restaurantId: string): Promise<any> => {
     let response = null;
-    try{
-        response = await Restaurant.deleteOne({_id: restaurantId});
+    try {
+        response = await Restaurant.deleteOne({ _id: restaurantId });
     } catch (error) {
-        console.error.bind(`Error occured trying to delete restaurant: ${restaurantId}:\n`);
+        console.error.bind(`${Errors.REST_DEL}: ${restaurantId}:\n`);
     } return response;
-}; 
+};
 
 const Restaurant = mongoose.model<IRestaurantDocument, IRestaurantModel>(`Restaurant`, restaurantSchema);
 export { IRestaurant, Restaurant, IRestaurantDocument };
 
-function getUpdate(key:String, value: String){
-    switch (key){
-        case "name":    return {name: value};
-        case "dishes":  return {dishes: value};
-        case "open":    return {open: value};
-        case "address": return {address: value};
-        default:        return null;
+
+// Util functions
+
+function getUpdate(key: string, value: string) {
+    switch (key) {
+        case Options.NAME: return { name: value };
+        case Options.DISHES: return { dishes: value };
+        case Options.OPEN: return { open: value };
+        case Options.ADDR: return { address: value };
+        default: return null;
+    }
+}
+
+function getFilter(contains: string){
+    return {'$regex': contains, '$options': 'i'};
+}
+
+function getFilterByKey(key: string, value: string){
+    switch(key){
+        case Options.NAME: return {name: getFilter(value)};
+        case Options.ADDR: return {address: getFilter(value)};
+        case Options.DESC: return {description: getFilter(value)};
     }
 }

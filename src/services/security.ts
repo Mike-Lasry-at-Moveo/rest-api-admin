@@ -1,4 +1,5 @@
-import crypto from "crypto"
+import CryptoJS from 'crypto-js'
+import crypto from 'crypto';
 
 enum Props {
     ALGORITHM = 'aes-256-cbc',
@@ -10,30 +11,20 @@ enum Props {
     KEY = "write your key here and tell no1"
 }
 
-// Secured Data Transportation functions
-
-const encrypt = (data: string) => {
-    const iv = Buffer.from(Props.IV, Props.ENCODING);
-    const cipher = crypto.createCipheriv(Props.ALGORITHM, Props.KEY, iv);
-    return Buffer
-        .concat([
-            cipher.update(data), 
-            cipher.final(), 
-            iv
-        ]).toString(Props.ENCODING);
+const encryptString = (plainText: string) =>{ 
+    return CryptoJS.AES.encrypt(plainText, 'secretkey').toString();
 }
 
-const decrypt = (data: string) => {
-    const binaryData = Buffer.from(data, Props.ENCODING);
-    const iv = binaryData.slice( -Props.IV_LENGTH );
-    const encryptedData = binaryData.slice(0, binaryData.length - iv.length);
-    
-    const decipher = crypto.createDecipheriv(Props.ALGORITHM, Buffer.from(Props.KEY),iv);
+const decryptString = (cipherText: string) =>{ 
+    return CryptoJS.AES.decrypt(cipherText, 'secretkey').toString(CryptoJS.enc.Utf8);
+}
 
-    return Buffer.concat([
-        decipher.update(encryptedData),
-        decipher.final()
-    ]).toString();
+const encryptJson = (plainObject: JSON) =>{ 
+    return CryptoJS.AES.encrypt(JSON.stringify(plainObject), 'secretkey').toString();
+}
+
+const decryptJson = (cipherObject: string) =>{ 
+    return JSON.parse(CryptoJS.AES.decrypt(cipherObject, 'secretkey').toString(CryptoJS.enc.Utf8));
 }
 
 // Passwords Hashing functions 
@@ -43,12 +34,16 @@ const generateSalt = () => {
 }
 
 const hashPassword = (password: string, salt: string) => {
-    return crypto.pbkdf2Sync(password, salt, Props.ITERS_COUNT, Props.KEY.length,Props.SHA).toString(Props.ENCODING);
+    return crypto.pbkdf2Sync(password, salt, Props.ITERS_COUNT, Props.KEY.length, Props.SHA).toString(Props.ENCODING);
 }
 
+
 export const securityService = { 
-    encrypt,
-    decrypt, 
+    encryptString,
+    decryptString, 
+
+    encryptJson,
+    decryptJson, 
 
     generateSalt,
     hashPassword,

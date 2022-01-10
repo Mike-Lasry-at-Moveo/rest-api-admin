@@ -91,7 +91,7 @@ userSchema.statics.add = async (user: IUserDocument): Promise<IUserDocument> => 
      } finally { return response; }
 };
 
-userSchema.statics.change = async (userId: string, key: String, value: String): Promise<any> => {
+userSchema.statics.change = async (userId: string, key: String, value: String): Promise<any> => {    
     let response = {} as any;
     try {
         response = await User.updateOne( {_id: userId}, {$set: {...getUpdate(key, value)}} );

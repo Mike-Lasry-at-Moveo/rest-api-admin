@@ -10,7 +10,7 @@ const getUserById = async (id: string): Promise<IUserDocument> => {
     return await User.getById(id);
 }
 
-const getUserByUsername = async (username: string): Promise<IUserDocument> => {
+const getUserByUsername = async (username: string): Promise<IUserDocument[]> => {
     return await User.getByUsername(username);
 }
 
@@ -27,25 +27,19 @@ const deleteUser = async (_id: string): Promise<IUserDocument> => {
 };
 
 const login = async (username: string, password: string): Promise<any> => {
-    console.log("reached login users service");
-    
     const users = await User.getByUsername(username);
     if(!users || !users.length) {
-        console.log("can't fins users:", users)
         return false;
     }
     const userHash = users[0].hash;
     const providedHash = securityService.hashPassword(password, users[0].salt);
     let authenticated: boolean = userHash == providedHash;
-    console.log("password match:", authenticated);
-
     if(authenticated){
         return signJWT(users[0], (err,token) => jwtCallback(err, token));
     } else return "Can't sign token";
 };
 
 const jwtCallback = (error: any, token: any) => {
-    console.log("in jwt callback\ntoken:", token);    
     return error ? error : token;
 }
 

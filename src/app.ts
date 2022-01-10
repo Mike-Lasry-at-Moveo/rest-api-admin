@@ -25,3 +25,7 @@ db.on("error", console.error.bind("Failed to connect to MongoDB"));
 mongoose.connect(`mongodb://127.0.0.1:${dbPort}/${dbName}`);
 app.listen(appPort, () => console.log(`Connected to server on port ${appPort}`));
 
+// import { securityService } from "./services/security";
+// let str: string = "1234";
+// console.log(securityService.encryptData(str));
+//securityService.decrypt
